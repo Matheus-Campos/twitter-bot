@@ -272,3 +272,7 @@ fabric.properties
 !.vscode/launch.json
 !.vscode/extensions.json
 .history
+
+# adicionado por Matheus
+.idea/
+*.csv
