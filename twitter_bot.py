@@ -32,20 +32,17 @@ def incrementData(data):
     return ano + "-" + mes + "-" + str(dia)
 
 
-def searchPage(navegador,dtInical,dtFinal):
-
-    # MODIFICAR PALAVRA QUE SERA CONSULTADA NO TWITTER:
-    palavraBase = "STF"
+def searchPage(navegador,dtInical,dtFinal, query):
 
     dataInicial = dtInical
     dataFinal = dtFinal
 
-    base_url = "https://twitter.com/search?l=pt&q=" + palavraBase + "%20since%3A" + dataInicial + "%20until%3A" + dataFinal + "&src=typd&lang=pt"
+    base_url = "https://twitter.com/search?l=pt&q=" + query + "%20since%3A" + dataInicial + "%20until%3A" + dataFinal + "&src=typd&lang=pt"
     navegador.get(base_url)
     sleep(1.5)
 
 
-def get_tweets(chrome_webdriver_path, dtInicial):
+def get_tweets(chrome_webdriver_path, dtInicial, query):
 
     datainicial = dtInicial
     browser = webdriver.Chrome(chrome_webdriver_path)
@@ -54,7 +51,7 @@ def get_tweets(chrome_webdriver_path, dtInicial):
     for i in range(31):
         datafinal = incrementData(datainicial)
 
-        searchPage(browser, datainicial, datafinal)
+        searchPage(browser, datainicial, datafinal, query)
         try:
             tweets = browser.find_elements_by_class_name('tweet')
             increment = 10
@@ -101,7 +98,7 @@ if __name__ == '__main__':
         query = input('Digite o que você quer procurar: ')
 
         # MODIFICAR A DATA INICIAL NO SEGUNDO ARGUMENTO PARA O DO MES EM QUESTÃO!!!
-        get_tweets(chrome_webdriver_path, "2018-03-01")
+        get_tweets(chrome_webdriver_path, "2018-03-01", query)
         save_to_file('tweets_ids.csv', ids)
     except KeyboardInterrupt:
         print('\nbye.')
