@@ -31,7 +31,7 @@ def get_tweets(chrome_webdriver_path, initial_date, query):
     # MODIFICAR O LIMITE DO RANGE PARA O NÚMERO DE DIAS DE COLETA DE TWEETS
     for i in range(76):
         datafinal = datainicial + timedelta(days=1)
-        print('[INFO] gettings tweets from ' + datafinal)
+        print('[INFO] gettings tweets from ' + str(datafinal))
         searchPage(browser, datainicial, datafinal, query)
         try:
             body = browser.find_element_by_tag_name('body')
@@ -47,7 +47,6 @@ def get_tweets(chrome_webdriver_path, initial_date, query):
             for tweet in tweets:
                 try:
                     id = tweet.get_attribute('data-tweet-id')
-                    print(id)
                     ids.append(id)
                 except StaleElementReferenceException:
                     print('[ERROR] lost element reference', tweet)
@@ -81,10 +80,9 @@ if __name__ == '__main__':
         get_tweets(chrome_webdriver_path, initial_date, query)
     except KeyboardInterrupt or Exception:
         pass
-    finally:
-        try:
-            save_to_file(output_file, ids)
-        except:
-            print('[FATAL] could not save ids')
-        print('\nbye.')
-        exit()
+    try:
+        save_to_file(output_file, ids)
+    except:
+        print('[FATAL] could not save ids')
+    print('\nbye.')
+    exit(1)
