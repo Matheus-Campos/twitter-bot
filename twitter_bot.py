@@ -1,10 +1,13 @@
+#!/usr/bin/env python3
+
+import sys
 from os import sep
 from os.path import dirname, realpath
 from time import sleep
+from datetime import date, timedelta
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
-
 
 ids = []
 
@@ -13,93 +16,75 @@ def get_script_directory():
     return dirname(realpath(__file__))
 
 
-def refreshScroll(drive):
-    body = drive.find_element_by_tag_name('body')
-    for i in range(2):
-        body.send_keys(Keys.END)
-        sleep(2)
-    return drive.find_elements_by_class_name('tweet')
-
-
-def incrementData(data):
-    listaData = data.split("-")
-    print(listaData)
-    dia = int(listaData[2])
-    mes = listaData[1]
-    ano = listaData[0]
-    dia+=1
-    dia = '%0*d' % (2, dia)
-    return ano + "-" + mes + "-" + str(dia)
-
-
-def searchPage(navegador,dtInical,dtFinal, query):
-
+def searchPage(navegador, dtInical, dtFinal, query):
     dataInicial = dtInical
     dataFinal = dtFinal
-
-    base_url = "https://twitter.com/search?l=pt&q=" + query + "%20since%3A" + dataInicial + "%20until%3A" + dataFinal + "&src=typd&lang=pt"
+    base_url = "https://twitter.com/search?l=pt&q=" + query + "%20since%3A" + str(dataInicial) + "%20until%3A" + str(dataFinal) + "&src=typd&lang=pt"
     navegador.get(base_url)
     sleep(1.5)
 
 
-def get_tweets(chrome_webdriver_path, dtInicial, query):
-
-    datainicial = dtInicial
+def get_tweets(chrome_webdriver_path, initial_date, query):
+    datainicial = initial_date
     browser = webdriver.Chrome(chrome_webdriver_path)
 
-    # MODIFICAR O LIMITE DO RANGE PARA O ULTIMO DIA DO MES EM QUESTAO!!!
-    for i in range(31):
-        datafinal = incrementData(datainicial)
-
+    # MODIFICAR O LIMITE DO RANGE PARA O NÚMERO DE DIAS DE COLETA DE TWEETS
+    for i in range(76):
+        datafinal = datainicial + timedelta(days=1)
+        print('[INFO] gettings tweets from ' + datafinal)
         searchPage(browser, datainicial, datafinal, query)
         try:
-            tweets = browser.find_elements_by_class_name('tweet')
+            body = browser.find_element_by_tag_name('body')
+            tweets = body.find_elements_by_class_name('tweet')
             increment = 10
-
             while len(tweets) >= increment:
-                print('scrolling down to load more tweets')
-                browser.execute_script('window.scrollTo(0, document.body.scrollHeight);')
+                print('[INFO] scrolling down to load more tweets')
+                body.send_keys(Keys.END)
                 sleep(2)
                 tweets = browser.find_elements_by_class_name('tweet')
                 increment = increment + 10
-
-            print('{} tweets found, {} total'.format(len(tweets), len(ids)))
-
+            print('[SUCCESS] {} tweets found, {} total'.format(len(tweets), len(ids)))
             for tweet in tweets:
                 try:
                     id = tweet.get_attribute('data-tweet-id')
                     print(id)
                     ids.append(id)
-                except StaleElementReferenceException as e:
-                    print('lost element reference', tweet)
-
+                except StaleElementReferenceException:
+                    print('[ERROR] lost element reference', tweet)
         except NoSuchElementException:
-            print('no tweets on this day')
-
+            print('[ERROR] no tweets on this day')
         datainicial = datafinal
 
 
 def save_to_file(filename, ids):
+    print('saving in ' + filename)
     texto = ""
     for i in ids:
         if texto == "":
             texto += str(i)
         else:
             texto += str(i) + ","
-
     file = open(filename, 'w')
     file.write(texto)
     file.close()
 
 
 if __name__ == '__main__':
+    if len(sys.argv) < 3:
+        print('Usage: python3 <query> <output_file>')
+        sys.exit(1)
     try:
-        chrome_webdriver_path = get_script_directory() + '{0}webdriver{0}chromedriver'.format(sep)
-        query = input('Digite o que você quer procurar: ')
-
-        # MODIFICAR A DATA INICIAL NO SEGUNDO ARGUMENTO PARA O DO MES EM QUESTÃO!!!
-        get_tweets(chrome_webdriver_path, "2018-03-01", query)
-        save_to_file('tweets_ids.csv', ids)
-    except KeyboardInterrupt:
+        chrome_webdriver_path = get_script_directory() + '{0}webdriver{0}chromedriver'.format(sep) 
+        query = sys.argv[1]
+        output_file = sys.argv[2]
+        initial_date = date(2018, 3, 1)
+        get_tweets(chrome_webdriver_path, initial_date, query)
+    except KeyboardInterrupt or Exception:
+        pass
+    finally:
+        try:
+            save_to_file(output_file, ids)
+        except:
+            print('[FATAL] could not save ids')
         print('\nbye.')
         exit()
