@@ -4,7 +4,7 @@ import sys
 from os import sep
 from os.path import dirname, realpath
 from time import sleep
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
@@ -31,32 +31,32 @@ def get_tweets(chrome_webdriver_path, initial_date, query):
     # MODIFICAR O LIMITE DO RANGE PARA O NÚMERO DE DIAS DE COLETA DE TWEETS
     for i in range(76):
         datafinal = datainicial + timedelta(days=1)
-        print('[INFO] gettings tweets from ' + str(datafinal))
+        log('[INFO] gettings tweets from ' + str(datafinal))
         searchPage(browser, datainicial, datafinal, query)
         try:
             body = browser.find_element_by_tag_name('body')
             tweets = body.find_elements_by_class_name('tweet')
             increment = 10
             while len(tweets) >= increment:
-                print('[INFO] scrolling down to load more tweets')
+                log('[INFO] scrolling down to load more tweets')
                 body.send_keys(Keys.END)
                 sleep(2)
                 tweets = browser.find_elements_by_class_name('tweet')
                 increment = increment + 10
-            print('[SUCCESS] {} tweets found, {} total'.format(len(tweets), len(ids)))
+            log('[SUCCESS] {} tweets found, {} total'.format(len(tweets), len(ids)))
             for tweet in tweets:
                 try:
                     id = tweet.get_attribute('data-tweet-id')
                     ids.append(id)
                 except StaleElementReferenceException:
-                    print('[ERROR] lost element reference', tweet)
+                    log('[ERROR] lost element reference ' + str(tweet))
         except NoSuchElementException:
-            print('[ERROR] no tweets on this day')
+            log('[ERROR] no tweets on this day')
         datainicial = datafinal
 
 
 def save_to_file(filename, ids):
-    print('saving in ' + filename)
+    log('[INFO] saving in ' + filename)
     texto = ""
     for i in ids:
         if texto == "":
@@ -66,6 +66,10 @@ def save_to_file(filename, ids):
     file = open(filename, 'w')
     file.write(texto)
     file.close()
+
+
+def log(string):
+    print(str(datetime.now())[:-7] + ' ' + string)
 
 
 if __name__ == '__main__':
@@ -82,7 +86,8 @@ if __name__ == '__main__':
         pass
     try:
         save_to_file(output_file, ids)
+        log('[SUCCESS] tweets ids saved!')
     except:
-        print('[FATAL] could not save ids')
+        log('[FATAL] could not save ids')
     print('\nbye.')
     exit(1)
