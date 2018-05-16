@@ -40,7 +40,7 @@ def get_tweets(chrome_webdriver_path, initial_date, query):
             while len(tweets) >= increment:
                 log('[INFO] scrolling down to load more tweets')
                 body.send_keys(Keys.END)
-                sleep(2)
+                sleep(4)
                 tweets = browser.find_elements_by_class_name('tweet')
                 increment = increment + 10
             log('[SUCCESS] {} tweets found, {} total'.format(len(tweets), len(ids)))
