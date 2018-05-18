@@ -1,4 +1,5 @@
 from tweepy import OAuthHandler, API
+import sys
 
 
 class TweetGetter:
@@ -7,28 +8,38 @@ class TweetGetter:
         try:
             auth = OAuthHandler(consumer_token, consumer_secret)
             auth.set_access_token(oauth_token, oauth_secret)
-            self.__api = API(auth)
+            self.__api = API(auth, wait_on_rate_limit=True)
         except:
             print('invalid tokens')
             exit(1)
 
-    def get_tweets(self, file):
+    def get_tweets(self, file, output):
         ids = file.read().split(',')
+        records = []
         for id in ids:
             try:
                 tweet = self.__api.get_status(id, tweet_mode='extended')
-                location_record = f'Location record: {tweet.user.location}'
                 user = tweet.user
-                user_record = f'User record: {user.id_str},{user.name},{user.screen_name},{user.verified},{user.followers_count},{user.lang}'
-                tweet_record = f'Tweet record: {tweet.id_str},{user.id_str},{tweet.favorite_count},{tweet.retweet_count},{tweet.created_at},{tweet.full_text},{tweet.retweeted}'
-            except:
+                text = tweet.full_text.replace('\n', ' ')
+                tweet_record = f'{tweet.id_str}\t{user.id_str}\t{user.name}\t{user.screen_name}\t{user.verified}\t{user.followers_count}\t{user.lang}\t{tweet.user.location}\t{tweet.favorite_count}\t{tweet.retweet_count}\t{tweet.created_at}\t{text}\t{tweet.retweeted}\n'
+                records.append(tweet_record)
+                print(f'{len(records)} tweets in records')
+            except KeyboardInterrupt:
+                self.__save_to_csvfile('test.csv', records)
+                exit()
+            except Exception as e:
+                print(e)
                 print('tweet does not exist anymore or tweepy was not able to get')
                 continue
-            print(location_record)
-            print(user_record)
-            print(tweet_record)
+        else:
+            self.__save_to_csvfile('output_'+output+'.csv', records)
 
-
+    def __save_to_csvfile(self, filename, content):
+        if filename[-4:] != '.csv':
+            return
+        file = open(filename, 'w')
+        file.writelines(content)
+        file.close()
 
 
 if __name__ == '__main__':
@@ -39,5 +50,6 @@ if __name__ == '__main__':
     oauth_token = '534684487-bk0tijVH74tD52cBzynMkx09e11C9A1lx55QFSZ1'
     oauth_secret = '2tRoUcnZApggTbpztead4BpC7JGDt9D72aLCzcv3jmqxI'
     tg = TweetGetter(consumer_token, consumer_secret, oauth_token, oauth_secret)
-    file = open('tweets_ids/ids_barroso.csv')
-    tg.get_tweets(file)
+    file = open('tweets_ids/'+sys.argv[1])
+    output = sys.argv[2]
+    tg.get_tweets(file, output)
