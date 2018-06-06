@@ -76,5 +76,5 @@ if __name__ == '__main__':
     if len(sys.argv) > 2:
         main(sys.argv[1], sys.argv[2])
     else:
-        print('Usage: python3 lerplanilhas.py-OLD <arq_entrada> <arq_saida>')
+        print('Usage: python3 lerplanilhas.py <arq_entrada> <arq_saida>')
         exit(1)
