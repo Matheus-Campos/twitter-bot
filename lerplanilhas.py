@@ -29,19 +29,20 @@ def pegaLocal(local):
 
 def main(input_file, output):
     # Abre o arquivo de saída para escrita:
-    with open(input_file, 'r') as file_read, open(output, 'w') as file_write:
+    with open('tweets_analise/' + input_file, 'r') as file_read, open(output, 'w') as file_write:
 
         # Define o leitor CSV do arquivo:
         reader = csv.reader(file_read, delimiter=';')
         # header = next(reader) # passa a primeira linha (cabealho)
 
         # Define o escritor CSV do arquivo:
-        fieldnames = ['date','ano','mes','dia','city', 'state', 'country', 'user id', 'username', 'user nickname','tweet', 'feeling']
+        fieldnames = ['date', 'ano', 'mes', 'dia', 'city', 'state', 'country', 'user id', 'username', 'user nickname','tweet', 'feeling']
         writer = csv.DictWriter(file_write, fieldnames=fieldnames, delimiter=';')  # inicia como DictWriter para permitir a escrita por dicionário
-        writer.writeheader() # escreve o cabeçalho no arquivo
+        writer.writeheader()  # escreve o cabeçalho no arquivo
 
         # Percorre as linhas do arquivo de entrada:
         for row in reader:
+            print(row)
             # separa os dados do CSV de leitura
             date, time = row[10].split(' ')
             number, place = pegaLocal(row[7])  # retorna o número de itens na lista de locais e a lista de locais
@@ -49,7 +50,7 @@ def main(input_file, output):
             user = [row[1], row[2], row[3]]
             tweet = row[11]
             feeling = (row[-1])
-            dia, mes, ano = date.split('/')
+            ano, mes, dia = date.split('-')
             # coloca os dados organizados num dicionário
             data = {'date': date, 'ano': ano, 'mes': mes, 'dia': dia, 'username': user[1], 'user id': user[0], 'user nickname': user[2], 'tweet': tweet, 'feeling': feeling}
 
@@ -74,7 +75,10 @@ def main(input_file, output):
 
 if __name__ == '__main__':
     if len(sys.argv) > 2:
-        main(sys.argv[1], sys.argv[2])
+        try:
+            main(sys.argv[1], sys.argv[2])
+        except KeyboardInterrupt:
+            exit(0)
     else:
         print('Usage: python3 lerplanilhas.py <arq_entrada> <arq_saida>')
         exit(1)
