@@ -3,8 +3,14 @@ import csv
 import sys
 import pycountry
 
-STATES = [state.name for state in pycountry.subdivisions.get(country_code='BR')]
-STATES.remove('Fernando de Noronha')  # remove a subdivisão Fernando de Noronha
+
+STATES = {'AC': 'Acre', 'AL': 'Alagoas', 'AP': 'Amapá', 'AM': 'Amazonas', 'BA': 'Bahia', 'CE': 'Ceará', 'DF': 'Distrito Federal', 'ES': 'Espírito Santo', 'GO': 'Goiás', 'MA': 'Maranhão', 'MT': 'Mato Grosso', 'MS':  'Mato Grosso do Sul', 'MG': 'Minas Gerais', 'PA': 'Pará', 'PB': 'Paraíba', 'PR': 'Paraná', 'PE': 'Pernambuco', 'PI': 'Piauí', 'RJ': 'Rio de Janeiro', 'RN': 'Rio Grande do Norte', 'RS': 'Rio Grande do Sul', 'RO': 'Rondônia', 'RR': 'Roraima', 'SC': 'Santa Catarina', 'SP': 'São Paulo', 'SE': 'Sergipe', 'TO': 'Tocantins'}
+
+
+def pegaEstado(place, data):
+    """Analisa se place está no dicionário STATES"""
+    for k, v in STATES.items():
+        data['state'] = v if place.lower() == k.lower() or place.lower() == v.lower() else ''
 
 
 def pegaLocal(local):
@@ -14,7 +20,7 @@ def pegaLocal(local):
         local = local.split(',')
         try:
             float(local[0])  # checa se a localização é uma coordenada
-            return 2, local
+            return len(local), local
         except ValueError:
             pass
     elif local.find('-'):
@@ -22,7 +28,7 @@ def pegaLocal(local):
     elif local.find('/'):
         local = local.split('/')
     else:
-        # presumi-se que a localização é nula
+        # presume-se que a localização é nula
         return 0, []
     return len(local), local
 
@@ -45,29 +51,22 @@ def main(input_file, output):
             print(row)
             # separa os dados do CSV de leitura
             date, time = row[10].split(' ')
-            number, place = pegaLocal(row[7])  # retorna o número de itens na lista de locais e a lista de locais
+            number_location, place = pegaLocal(row[7])  # retorna o número de itens na lista de locais e a lista de locais
             place = [p.replace('Brazil', 'Brasil') for p in place] # substitui Brazil por Brasil
             user = [row[1], row[2], row[3]]
             tweet = row[11]
             feeling = (row[-1])
             ano, mes, dia = date.split('-')
             # coloca os dados organizados num dicionário
-            data = {'date': date, 'ano': ano, 'mes': mes, 'dia': dia, 'username': user[1], 'user id': user[0], 'user nickname': user[2], 'tweet': tweet, 'feeling': feeling}
+            data = {'date': date, 'ano': ano, 'mes': mes, 'dia': dia, 'state': '', 'country': 'Brazil', 'username': user[1], 'user id': user[0], 'user nickname': user[2], 'tweet': tweet, 'feeling': feeling}
 
-            # quebra a localização do tweet, organizando por país, estado e cidade
-            if place[0] == 'Brasil':
-                data['country'] = place[0]
-            elif place[-1] == 'Brasil':
-                data['country'] = place[-1]
-                if len(place) == 2:
-                    data['state'] = place[0]
-                else:
-                    data['city'] = place[0]
-                    data['state'] = place[1]
-            else:
-                data['state'] = place[-1]
-                if len(place) > 1:
-                    data['city'] = place[0]
+            # quebra a localização do tweet
+            if number_location == 0:
+                data['state'] = ''
+            elif number_location == 1:
+                pegaEstado(place[-1], data)
+            elif number_location >= 2:
+                pegaEstado(place[-2], data)
 
             # escreve no arquivo de escrita
             writer.writerow(data)
