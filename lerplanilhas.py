@@ -104,7 +104,7 @@ def main(input_file, output):
             db_conn = getConnection()
             cursor = db_conn.cursor()
 
-            insere_sentimento = ('INSERT INTO sentimento (valor, polaridade) VALUES (%s, %s)')
+            insere_sentimento = ('INSERT INTO sentimento (id_sentimento, polaridade) VALUES (%s, %s)')
             sentimento = (sentiment, polarity)
             cursor.execute(insere_sentimento, params=sentimento)
             db_conn.commit()
