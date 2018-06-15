@@ -29,7 +29,7 @@ def getLocal(local):
         local = local.split('/')
     else:
         # presume-se que a localização é nula
-        local = []
+        return 0, []
     return len(local), local
 
 
@@ -60,10 +60,20 @@ def getConnection():
     return connector.Connect(host='127.0.0.1', database='fonte_sentimento_stf', user='root', password='')
 
 
-def executeQuery(statement, values):
+def executeQuery(statement, values, local=None):
     db_conn = getConnection()
     cursor = db_conn.cursor()
-    id = cursor.execute(statement, values)
+    try:
+        cursor.execute(statement, values)
+    except:
+        if local is not None:
+            cursor.execute("SELECT id FROM local WHERE state = {}".format(values[1]))
+            for row in cursor:
+                print(row)
+            cursor.close()
+            db_conn.close()
+            return int(id)
+    id = cursor._last_insert_id
     db_conn.commit()
     cursor.close()
     db_conn.close()
@@ -79,7 +89,7 @@ def main(input_file, output):
         # header = next(reader) # passa a primeira linha (cabealho)
 
         # Define o escritor CSV do arquivo:
-        fieldnames = ['date', 'ano', 'mes', 'dia', 'city', 'state', 'country', 'user id', 'username', 'user nickname','tweet', 'sentiment', 'verified']
+        fieldnames = ['date', 'ano', 'mes', 'dia', 'city', 'state', 'country', 'user id', 'username', 'user nickname','text', 'sentiment', 'verified']
         writer = csv.DictWriter(file_write, fieldnames=fieldnames, delimiter='\t')  # inicia como DictWriter para permitir a escrita por dicionário
         writer.writeheader()  # escreve o cabeçalho no arquivo
 
@@ -92,13 +102,15 @@ def main(input_file, output):
             date, time = row[10].split(' ')
             number_location, place = getLocal(row[7])  # retorna o número de itens na lista de locais e a lista de locais
             place = [p.replace('Brazil', 'Brasil') for p in place] # substitui Brazil por Brasil
-            user = row[1:6].extend(['pt']) # são as colunas referentes ao usuário + pt como idioma
-            tweet = row[11]
+            user = row[1:6]
+            user.extend(['pt'])
+            text = row[11]
             sentiment, polarity = correctSentimentValue(row[-1]) # sentimento + polaridade
             ano, mes, dia = date.split('-')
+            retweeted = 1 if bool(row[-2]) == 'True' else 0
 
             # coloca os dados organizados num dicionário
-            data = {'date': date, 'ano': ano, 'mes': mes, 'dia': dia, 'state': '', 'country': 'Brazil', 'username': user[1], 'user id': user[0], 'user nickname': user[2], 'tweet': tweet, 'sentiment': sentiment, 'verified': row[4]}
+            data = {'date': date, 'ano': ano, 'mes': mes, 'dia': dia, 'state': '', 'country': 'Brasil', 'username': user[1], 'user id': user[0], 'user nickname': user[2], 'text': text, 'sentiment': sentiment, 'verified': row[4]}
 
             # quebra a localização do tweet
             if number_location == 0:
@@ -114,23 +126,52 @@ def main(input_file, output):
             ############################################################################################
             ########################## INSERÇÕES NO BANCO DE DADOS #####################################
 
-            insert_sentiment = ('INSERT INTO sentimento (id_sentimento, polaridade) VALUES (%s, %s)')
+            insert_sentiment = 'INSERT INTO sentimento (id_sentimento, polaridade) VALUES (%s, %s)'
             sentiment = (sentiment, polarity)
 
-            insert_local = ('INSERT INTO local (pais, estado) VALUES (%s, %s)')
+            insert_local = 'INSERT INTO local (pais, estado) VALUES (%s, %s)'
             local = (data['country'], data['state'])
 
-            insert_user = ('INSERT INTO usuario VALUES (%s, %s, %s, %s, %s, %s, %s)')
+            insert_user = 'INSERT INTO usuario VALUES (%s, %s, %s, %s, %s, %s, %s)'
 
+            insert_tweet = 'INSERT INTO tweet VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
+            tweet = (row[0], user[0], date, text, retweeted, 'pt', sentiment[0])
+
+            insert_tweet_minister = 'INSERT INTO tweet_ministro VALUES (%s, %s)'
+            id_minister = 0
+            tweet_minister = (row[0], id_minister)
+            
             try:
                 executeQuery(insert_sentiment, sentiment)
-                id_local = executeQuery(insert_local, local)
-                executeQuery(insert_user, user.extend([id_local]))
             except connector.IntegrityError as e:
-                print('[WARNING]', e.msg)
-                pass
+                print('[SENTIMENTO]', e.msg)
+
+            try:
+                id_local = executeQuery(insert_local, local, True)
+            except connector.IntegrityError as e:
+                print('[LOCAL]', e.msg)
+
+            user.extend([id_local])
+
+            try:
+                executeQuery(insert_user, tuple(user))
+            except connector.IntegrityError as e:
+                print('[USUARIO]', e.msg)
+
+            try:
+                executeQuery(insert_tweet, tweet)
+            except connector.IntegrityError as e:
+                print('[TWEET]', e.msg)
+
+            try:
+                executeQuery(insert_tweet_minister, tweet_minister)
+            except connector.IntegrityError as e:
+                print('[TWEET_MINISTER]', e.msg)
+
+
 
             #############################################################################################
+
 
 if __name__ == '__main__':
     if len(sys.argv) > 2:
