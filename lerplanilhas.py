@@ -29,7 +29,7 @@ def getLocal(local):
         local = local.split('/')
     else:
         # presume-se que a localização é nula
-        return 0, []
+        local = []
     return len(local), local
 
 
@@ -55,8 +55,19 @@ def getSentimentPolarity(sentiment):
     else:
         return 'NEUTRO'
 
+
 def getConnection():
     return connector.Connect(host='127.0.0.1', database='fonte_sentimento_stf', user='root', password='')
+
+
+def executeQuery(statement, values):
+    db_conn = getConnection()
+    cursor = db_conn.cursor()
+    id = cursor.execute(statement, values)
+    db_conn.commit()
+    cursor.close()
+    db_conn.close()
+    return id
 
 
 def main(input_file, output):
@@ -81,14 +92,13 @@ def main(input_file, output):
             date, time = row[10].split(' ')
             number_location, place = getLocal(row[7])  # retorna o número de itens na lista de locais e a lista de locais
             place = [p.replace('Brazil', 'Brasil') for p in place] # substitui Brazil por Brasil
-            user = [row[1], row[2], row[3]]
+            user = row[1:6].extend(['pt']) # são as colunas referentes ao usuário + pt como idioma
             tweet = row[11]
-            verified = row[4]
-            sentiment, polarity = correctSentimentValue(row[-1])
+            sentiment, polarity = correctSentimentValue(row[-1]) # sentimento + polaridade
             ano, mes, dia = date.split('-')
 
             # coloca os dados organizados num dicionário
-            data = {'date': date, 'ano': ano, 'mes': mes, 'dia': dia, 'state': '', 'country': 'Brazil', 'username': user[1], 'user id': user[0], 'user nickname': user[2], 'tweet': tweet, 'sentiment': sentiment, 'verified': verified}
+            data = {'date': date, 'ano': ano, 'mes': mes, 'dia': dia, 'state': '', 'country': 'Brazil', 'username': user[1], 'user id': user[0], 'user nickname': user[2], 'tweet': tweet, 'sentiment': sentiment, 'verified': row[4]}
 
             # quebra a localização do tweet
             if number_location == 0:
@@ -101,15 +111,26 @@ def main(input_file, output):
             # escreve no arquivo de escrita
             writer.writerow(data)
 
-            db_conn = getConnection()
-            cursor = db_conn.cursor()
+            ############################################################################################
+            ########################## INSERÇÕES NO BANCO DE DADOS #####################################
 
-            insere_sentimento = ('INSERT INTO sentimento (id_sentimento, polaridade) VALUES (%s, %s)')
-            sentimento = (sentiment, polarity)
-            cursor.execute(insere_sentimento, params=sentimento)
-            db_conn.commit()
-            cursor.close()
-            db_conn.close()
+            insert_sentiment = ('INSERT INTO sentimento (id_sentimento, polaridade) VALUES (%s, %s)')
+            sentiment = (sentiment, polarity)
+
+            insert_local = ('INSERT INTO local (pais, estado) VALUES (%s, %s)')
+            local = (data['country'], data['state'])
+
+            insert_user = ('INSERT INTO usuario VALUES (%s, %s, %s, %s, %s, %s, %s)')
+
+            try:
+                executeQuery(insert_sentiment, sentiment)
+                id_local = executeQuery(insert_local, local)
+                executeQuery(insert_user, user.extend([id_local]))
+            except connector.IntegrityError as e:
+                print('[WARNING]', e.msg)
+                pass
+
+            #############################################################################################
 
 if __name__ == '__main__':
     if len(sys.argv) > 2:
