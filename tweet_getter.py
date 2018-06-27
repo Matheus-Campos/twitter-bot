@@ -25,7 +25,7 @@ class TweetGetter:
                 records.append(tweet_record)
                 print(f'{len(records)} tweets in records')
             except KeyboardInterrupt:
-                self.__save_to_csvfile('test.csv', records)
+                self.__save_to_csvfile('output_'+output+'.csv', records)
                 exit()
             except Exception as e:
                 print(e)
